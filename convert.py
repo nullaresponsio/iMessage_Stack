@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import subprocess
 import argparse
+import os
+import tempfile
 
 def get_duration(path):
     result = subprocess.run(
@@ -29,20 +31,24 @@ def compress(input_path, output_path, target_mb, audio_kbps):
     subprocess.run([
         "ffmpeg", "-i", input_path,
         "-c:v", "libx264", "-b:v", f"{video_kbps}k",
-        "-c:a", "aac",    "-b:a", f"{audio_kbps}k",
+        "-c:a", "aac", "-b:a", f"{audio_kbps}k",
         output_path
     ], check=True)
 
 def main():
-    parser = argparse.ArgumentParser(description="Compress video to a size target")
-    parser.add_argument("input",  help="Input video file")
-    parser.add_argument("output", help="Output video file")
-    parser.add_argument("--target", type=int, default=100,
-                        help="Target size in MB (default: 100)")
-    parser.add_argument("--audio",  type=int, default=128,
-                        help="Audio bitrate in kbps (default: 128)")
+    parser = argparse.ArgumentParser(description="Compress video to ~99 MB and overwrite")
+    parser.add_argument("input", help="Input video file")
+    parser.add_argument("--target", type=int, default=99, help="Target size in MB")
+    parser.add_argument("--audio", type=int, default=128, help="Audio bitrate in kbps")
     args = parser.parse_args()
-    compress(args.input, args.output, args.target, args.audio)
+
+    inp = args.input
+    base, ext = os.path.splitext(inp)
+    fd, tmp = tempfile.mkstemp(suffix=ext, dir=os.path.dirname(inp))
+    os.close(fd)
+
+    compress(inp, tmp, args.target, args.audio)
+    os.replace(tmp, inp)
 
 if __name__ == "__main__":
     main()
